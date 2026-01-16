@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>中学生学習サイト</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#0d9488',
+            'primary-foreground': '#ffffff',
+            secondary: '#f1f5f9',
+            'secondary-foreground': '#1e293b',
+            accent: '#14b8a6',
+            'accent-foreground': '#ffffff',
+            muted: '#f1f5f9',
+            'muted-foreground': '#64748b',
+            background: '#f8fafc',
+            foreground: '#0f172a',
+            card: '#ffffff',
+            border: '#e2e8f0',
+            success: '#22c55e',
+            error: '#ef4444',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif; background: #f8fafc; color: #0f172a; min-height: 100vh; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 500; transition: all 0.2s; cursor: pointer; border: 1px solid transparent; }
+    .btn-primary { background: #0d9488; color: #fff; }
+    .btn-primary:hover { background: #0f766e; }
+    .btn-primary:disabled { background: #94a3b8; cursor: not-allowed; }
+    .btn-outline { background: transparent; border-color: #e2e8f0; color: #0f172a; }
+    .btn-outline:hover { background: #f1f5f9; }
+    .btn-outline.selected { background: #0d9488; color: #fff; border-color: #0d9488; }
+    .btn-ghost { background: transparent; color: #64748b; }
+    .btn-ghost:hover { background: #f1f5f9; }
+    .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 0.75rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .progress-bar { height: 0.5rem; background: #f1f5f9; border-radius: 9999px; overflow: hidden; }
+    .progress-bar-fill { height: 100%; background: #0d9488; transition: width 0.3s; }
+    /* Updated choice button styles for selection UI */
+    .choice-btn { width: 100%; text-align: left; padding: 1rem; border: 2px solid #e2e8f0; border-radius: 0.5rem; background: #fff; cursor: pointer; transition: all 0.2s; font-size: 1rem; }
+    .choice-btn:hover:not(:disabled) { border-color: #0d9488; background: rgba(13, 148, 136, 0.05); }
+    .choice-btn.selected { border-color: #0d9488; background: rgba(13, 148, 136, 0.1); }
+    .choice-btn.correct { border-color: #22c55e; background: rgba(34, 197, 94, 0.15); }
+    .choice-btn.incorrect { border-color: #ef4444; background: rgba(239, 68, 68, 0.15); }
+    .choice-btn.show-correct { border-color: #22c55e; background: rgba(34, 197, 94, 0.15); }
+    .choice-btn:disabled { cursor: not-allowed; opacity: 0.9; }
+    .icon { width: 1.25rem; height: 1.25rem; }
+    .hidden { display: none !important; }
+    .choice-label { display: inline-flex; align-items: center; justify-content: center; width: 1.75rem; height: 1.75rem; border-radius: 50%; background: #f1f5f9; color: #64748b; font-weight: 600; margin-right: 0.75rem; flex-shrink: 0; }
+    .choice-btn.correct .choice-label { background: #22c55e; color: #fff; }
+    .choice-btn.incorrect .choice-label { background: #ef4444; color: #fff; }
+    .choice-btn.show-correct .choice-label { background: #22c55e; color: #fff; }
+    .difficulty-badge { display: inline-block; padding: 0.25rem 0.5rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; }
+    .difficulty-easy { background: #dcfce7; color: #166534; }
+    .difficulty-normal { background: #dbeafe; color: #1e40af; }
+    .difficulty-hard { background: #fee2e2; color: #991b1b; }
+    .tag-badge { display: inline-block; padding: 0.125rem 0.5rem; border-radius: 0.375rem; background: #f1f5f9; color: #64748b; font-size: 0.75rem; }
+  </style>
+</head>
+<body>
+  <div class="min-h-screen p-4 md:p-6">
+    <div class="max-w-2xl mx-auto">
+      <!-- Header -->
+      <header class="text-center mb-8">
+        <h1 class="text-2xl md:text-3xl font-bold text-foreground mb-2">中学生学習サイト</h1>
+        <p class="text-muted-foreground">学年・教科・単元を選んで問題を解こう</p>
+      </header>
+
+      <!-- CSV Load Section -->
+      <div id="csv-load-section" class="card p-6 mb-6">
+        <div class="flex items-center gap-2 mb-4">
+          <svg class="icon text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+          </svg>
+          <h2 class="text-lg font-semibold">問題データの読み込み</h2>
+        </div>
+        <p class="text-sm text-muted-foreground mb-4">CSVファイルを選択するか、デフォルトの問題を使用してください。</p>
+        <p class="text-xs text-muted-foreground mb-4 bg-gray-50 p-3 rounded-lg">
+          CSVフォーマット: <code class="bg-gray-200 px-1 rounded">grade,subject,unit,question,answer,choice2,choice3,choice4,explanation,difficulty,tags</code><br>
+          ※ answerに正解を記載。選択肢はランダムに並び替えられます。<br>
+          ※ explanation（解説）、difficulty（easy/normal/hard）、tags（カンマ区切り）は省略可能です。
+        </p>
+        <div class="flex flex-col sm:flex-row gap-3">
+          <label class="btn btn-outline flex-1 cursor-pointer">
+            <svg class="icon mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+            </svg>
+            CSVファイルを選択
+            <input type="file" id="csv-input" accept=".csv" class="hidden">
+          </label>
+          <button id="use-default-btn" class="btn btn-primary flex-1">
+            デフォルトの問題を使用
+          </button>
+        </div>
+        <p id="csv-status" class="text-sm text-muted-foreground mt-3 hidden"></p>
+      </div>
+
+      <!-- Selection Screen -->
+      <div id="selection-screen" class="card p-6 hidden">
+        <div class="flex items-center gap-2 mb-6">
+          <svg class="icon text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+          </svg>
+          <h2 class="text-lg font-semibold">学習設定</h2>
+        </div>
+
+        <!-- Grade Selection -->
+        <div class="mb-6">
+          <h3 class="text-sm font-medium text-muted-foreground mb-3">学年を選択</h3>
+          <div class="flex flex-wrap gap-2" id="grade-buttons"></div>
+        </div>
+
+        <!-- Subject Selection -->
+        <div class="mb-6 hidden" id="subject-section">
+          <h3 class="text-sm font-medium text-muted-foreground mb-3">教科を選択</h3>
+          <div class="flex flex-wrap gap-2" id="subject-buttons"></div>
+        </div>
+
+        <!-- Unit Selection -->
+        <div class="mb-6 hidden" id="unit-section">
+          <h3 class="text-sm font-medium text-muted-foreground mb-3">単元を選択</h3>
+          <div class="flex flex-wrap gap-2" id="unit-buttons"></div>
+        </div>
+
+        <!-- Start Button -->
+        <button id="start-button" class="btn btn-primary w-full py-3 text-lg" disabled>
+          <svg class="icon mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path>
+          </svg>
+          問題を出す
+        </button>
+      </div>
+
+      <!-- Question Screen -->
+      <div id="question-screen" class="hidden">
+        <div class="flex items-center justify-between mb-4">
+          <p class="text-sm text-muted-foreground" id="breadcrumb"></p>
+          <button id="back-button" class="btn btn-ghost text-sm">選択に戻る</button>
+        </div>
+
+        <div class="card">
+          <div class="p-6 pb-2">
+            <div class="flex items-center justify-between">
+              <span class="text-sm font-medium text-muted-foreground" id="question-counter"></span>
+              <div class="flex items-center gap-4">
+                <span class="text-sm font-medium text-success" id="correct-count">正解: 0</span>
+                <div class="progress-bar w-32">
+                  <div class="progress-bar-fill" id="progress-fill"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="p-6 pt-4">
+            <div class="min-h-16 flex items-center mb-4">
+              <div class="flex-1">
+                <div class="flex items-center gap-2 mb-2">
+                  <p class="text-lg md:text-xl font-medium leading-relaxed" id="question-text"></p>
+                  <span id="difficulty-badge" class="text-xs px-2 py-1 rounded-full font-medium hidden"></span>
+                </div>
+                <div id="tags-container" class="flex flex-wrap gap-1 mt-2"></div>
+              </div>
+            </div>
+
+            <!-- Choice Buttons -->
+            <div class="space-y-3 mb-4" id="choices-container"></div>
+
+            <!-- Feedback -->
+            <div id="feedback-box" class="mt-4 p-4 rounded-lg hidden">
+              <p class="font-medium mb-2" id="feedback-text"></p>
+              <div id="explanation-box" class="mt-3 pt-3 border-t border-current/20 hidden">
+                <p class="text-sm font-medium mb-1 opacity-80">解説</p>
+                <p class="text-sm leading-relaxed" id="explanation-text"></p>
+              </div>
+            </div>
+          </div>
+
+          <div class="p-6 pt-4 flex flex-col sm:flex-row gap-3">
+            <button id="next-button" class="btn btn-primary flex-1 hidden">次の問題</button>
+            <button id="finish-button" class="btn btn-primary flex-1 hidden">結果を見る</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Complete Screen -->
+      <div id="complete-screen" class="hidden">
+        <div class="card p-8 text-center">
+          <svg class="mx-auto mb-4 w-16 h-16 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <h3 class="text-2xl font-bold mb-2">お疲れさまでした！</h3>
+          <p class="text-muted-foreground mb-2" id="complete-message"></p>
+          <p class="text-3xl font-bold text-primary mb-6" id="score-display"></p>
+          <button id="complete-restart-button" class="btn btn-primary py-3 px-8 text-lg">もう一度挑戦する</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // State
+    let questionData = [];
+    let selectedGrade = null;
+    let selectedSubject = null;
+    let selectedUnit = null;
+    let currentQuestions = [];
+    let currentIndex = 0;
+    let correctCount = 0;
+    let answered = false;
+
+    // DOM Elements
+    const csvLoadSection = document.getElementById('csv-load-section');
+    const csvInput = document.getElementById('csv-input');
+    const useDefaultBtn = document.getElementById('use-default-btn');
+    const csvStatus = document.getElementById('csv-status');
+    const selectionScreen = document.getElementById('selection-screen');
+    const questionScreen = document.getElementById('question-screen');
+    const completeScreen = document.getElementById('complete-screen');
+    const gradeButtons = document.getElementById('grade-buttons');
+    const subjectSection = document.getElementById('subject-section');
+    const subjectButtons = document.getElementById('subject-buttons');
+    const unitSection = document.getElementById('unit-section');
+    const unitButtons = document.getElementById('unit-buttons');
+    const startButton = document.getElementById('start-button');
+    const backButton = document.getElementById('back-button');
+    const breadcrumb = document.getElementById('breadcrumb');
+    const questionCounter = document.getElementById('question-counter');
+    const correctCountEl = document.getElementById('correct-count');
+    const progressFill = document.getElementById('progress-fill');
+    const questionText = document.getElementById('question-text');
+    const choicesContainer = document.getElementById('choices-container');
+    const feedbackBox = document.getElementById('feedback-box');
+    const feedbackText = document.getElementById('feedback-text');
+    const nextButton = document.getElementById('next-button');
+    const finishButton = document.getElementById('finish-button');
+    const completeMessage = document.getElementById('complete-message');
+    const scoreDisplay = document.getElementById('score-display');
+    const completeRestartButton = document.getElementById('complete-restart-button');
+
+    function parseCSV(csvText) {
+      const lines = csvText.trim().split('\n');
+      const data = [];
+      
+      for (let i = 1; i < lines.length; i++) {
+        // タブ区切りで分割
+        const values = lines[i].split('\t').map(v => v.trim());
+        
+        // Format: grade, subject, unit, question, answer, choice2, choice3, choice4, explanation, difficulty, tags
+        if (values.length >= 8) {
+          data.push({
+            grade: values[0],
+            subject: values[1],
+            unit: values[2],
+            question: values[3],
+            answer: values[4], // The correct answer text
+            choices: [values[4], values[5], values[6], values[7]], // All 4 choices
+            explanation: values[8] || '', // Explanation (optional)
+            difficulty: values[9] || '', // Difficulty: easy, normal, hard (optional)
+            tags: values[10] ? values[10].split(',').map(t => t.trim()).filter(t => t) : [] // Tags (comma-separated, optional)
+          });
+        }
+      }
+      return data;
+    }
+
+    // Process data into hierarchical structure
+    function processQuestionData(rawData) {
+      const grades = {};
+      
+      rawData.forEach(item => {
+        if (!grades[item.grade]) {
+          grades[item.grade] = { name: item.grade, subjects: {} };
+        }
+        if (!grades[item.grade].subjects[item.subject]) {
+          grades[item.grade].subjects[item.subject] = { name: item.subject, units: {} };
+        }
+        if (!grades[item.grade].subjects[item.subject].units[item.unit]) {
+          grades[item.grade].subjects[item.subject].units[item.unit] = { name: item.unit, questions: [] };
+        }
+        grades[item.grade].subjects[item.subject].units[item.unit].questions.push({
+          question: item.question,
+          answer: item.answer,
+          choices: item.choices,
+          explanation: item.explanation || '',
+          difficulty: item.difficulty || '',
+          tags: item.tags || []
+        });
+      });
+      
+      return Object.values(grades).map(grade => ({
+        ...grade,
+        subjects: Object.values(grade.subjects).map(subject => ({
+          ...subject,
+          units: Object.values(subject.units)
+        }))
+      }));
+    }
+
+    // Load default CSV
+    async function loadDefaultCSV() {
+      try {
+        const response = await fetch('data.csv');
+        const text = await response.text();
+        const rawData = parseCSV(text);
+        questionData = processQuestionData(rawData);
+        showStatus(`${rawData.length}問の問題を読み込みました`, 'success');
+        initSelectionScreen();
+      } catch (error) {
+        showStatus('デフォルトの問題ファイルの読み込みに失敗しました', 'error');
+      }
+    }
+
+    // Show status message
+    function showStatus(message, type) {
+      csvStatus.textContent = message;
+      csvStatus.classList.remove('hidden', 'text-success', 'text-error');
+      csvStatus.classList.add(type === 'success' ? 'text-success' : 'text-error');
+    }
+
+    // Initialize selection screen
+    function initSelectionScreen() {
+      csvLoadSection.classList.add('hidden');
+      selectionScreen.classList.remove('hidden');
+      renderGrades();
+    }
+
+    // Render grade buttons
+    function renderGrades() {
+      gradeButtons.innerHTML = '';
+      questionData.forEach(grade => {
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-outline';
+        btn.textContent = grade.name;
+        btn.onclick = () => selectGrade(grade);
+        gradeButtons.appendChild(btn);
+      });
+    }
+
+    // Select grade
+    function selectGrade(grade) {
+      selectedGrade = grade;
+      selectedSubject = null;
+      selectedUnit = null;
+      updateGradeButtons();
+      renderSubjects();
+      subjectSection.classList.remove('hidden');
+      unitSection.classList.add('hidden');
+      startButton.disabled = true;
+    }
+
+    function updateGradeButtons() {
+      Array.from(gradeButtons.children).forEach(btn => {
+        btn.classList.toggle('selected', btn.textContent === selectedGrade.name);
+      });
+    }
+
+    // Render subjects
+    function renderSubjects() {
+      subjectButtons.innerHTML = '';
+      selectedGrade.subjects.forEach(subject => {
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-outline';
+        btn.textContent = subject.name;
+        btn.onclick = () => selectSubject(subject);
+        subjectButtons.appendChild(btn);
+      });
+    }
+
+    // Select subject
+    function selectSubject(subject) {
+      selectedSubject = subject;
+      selectedUnit = null;
+      updateSubjectButtons();
+      renderUnits();
+      unitSection.classList.remove('hidden');
+      startButton.disabled = true;
+    }
+
+    function updateSubjectButtons() {
+      Array.from(subjectButtons.children).forEach(btn => {
+        btn.classList.toggle('selected', btn.textContent === selectedSubject.name);
+      });
+    }
+
+    // Render units
+    function renderUnits() {
+      unitButtons.innerHTML = '';
+      selectedSubject.units.forEach(unit => {
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-outline';
+        btn.textContent = unit.name;
+        btn.onclick = () => selectUnit(unit);
+        unitButtons.appendChild(btn);
+      });
+    }
+
+    // Select unit
+    function selectUnit(unit) {
+      selectedUnit = unit;
+      updateUnitButtons();
+      startButton.disabled = false;
+    }
+
+    function updateUnitButtons() {
+      Array.from(unitButtons.children).forEach(btn => {
+        btn.classList.toggle('selected', btn.textContent === selectedUnit.name);
+      });
+    }
+
+    // Shuffle array
+    function shuffle(array) {
+      const arr = [...array];
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    // Convert math notation: x^2 -> x<sup>2</sup>
+    function formatMathNotation(text) {
+      if (!text) return text;
+      // Convert ^数字 to <sup>数字</sup>
+      return text.replace(/\^(\d+)/g, '<sup>$1</sup>');
+    }
+
+    // Start quiz
+    function startQuiz() {
+      const questionsWithShuffledChoices = selectedUnit.questions.map(q => {
+        const shuffledChoices = shuffle(q.choices);
+        const correctIndex = shuffledChoices.indexOf(q.answer);
+        return {
+          question: q.question,
+          choices: shuffledChoices,
+          correctIndex: correctIndex,
+          answer: q.answer,
+          explanation: q.explanation || '',
+          difficulty: q.difficulty || '',
+          tags: q.tags || []
+        };
+      });
+      
+      currentQuestions = shuffle(questionsWithShuffledChoices).slice(0, 10);
+      currentIndex = 0;
+      correctCount = 0;
+      selectionScreen.classList.add('hidden');
+      questionScreen.classList.remove('hidden');
+      breadcrumb.textContent = `${selectedGrade.name} > ${selectedSubject.name} > ${selectedUnit.name}`;
+      showQuestion();
+    }
+
+    // Show question
+    function showQuestion() {
+      answered = false;
+      const q = currentQuestions[currentIndex];
+      questionCounter.textContent = `問題 ${currentIndex + 1} / ${currentQuestions.length}`;
+      correctCountEl.textContent = `正解: ${correctCount}`;
+      progressFill.style.width = `${((currentIndex) / currentQuestions.length) * 100}%`;
+      questionText.innerHTML = formatMathNotation(q.question);
+      
+      // Show difficulty badge
+      const difficultyBadge = document.getElementById('difficulty-badge');
+      if (q.difficulty) {
+        difficultyBadge.textContent = q.difficulty === 'easy' ? 'かんたん' : q.difficulty === 'normal' ? 'ふつう' : q.difficulty === 'hard' ? '難しい' : q.difficulty;
+        difficultyBadge.className = `difficulty-badge difficulty-${q.difficulty}`;
+        difficultyBadge.classList.remove('hidden');
+      } else {
+        difficultyBadge.classList.add('hidden');
+      }
+      
+      // Show tags
+      const tagsContainer = document.getElementById('tags-container');
+      tagsContainer.innerHTML = '';
+      if (q.tags && q.tags.length > 0) {
+        q.tags.forEach(tag => {
+          const tagEl = document.createElement('span');
+          tagEl.className = 'tag-badge';
+          tagEl.textContent = tag;
+          tagsContainer.appendChild(tagEl);
+        });
+      }
+      
+      choicesContainer.innerHTML = '';
+      const labels = ['A', 'B', 'C', 'D'];
+      q.choices.forEach((choice, index) => {
+        const btn = document.createElement('button');
+        btn.className = 'choice-btn flex items-center';
+        btn.innerHTML = `<span class="choice-label">${labels[index]}</span><span>${formatMathNotation(choice)}</span>`;
+        btn.onclick = () => selectChoice(index);
+        btn.dataset.index = index;
+        choicesContainer.appendChild(btn);
+      });
+      
+      feedbackBox.classList.add('hidden');
+      nextButton.classList.add('hidden');
+      finishButton.classList.add('hidden');
+    }
+
+    function selectChoice(index) {
+      if (answered) return;
+      answered = true;
+      
+      const q = currentQuestions[currentIndex];
+      const isCorrect = index === q.correctIndex;
+      
+      if (isCorrect) {
+        correctCount++;
+        correctCountEl.textContent = `正解: ${correctCount}`;
+      }
+      
+      // Update button styles
+      const buttons = choicesContainer.querySelectorAll('.choice-btn');
+      buttons.forEach((btn, i) => {
+        btn.disabled = true;
+        if (i === q.correctIndex) {
+          btn.classList.add('correct');
+        } else if (i === index && !isCorrect) {
+          btn.classList.add('incorrect');
+        }
+      });
+      
+      // Show feedback
+      feedbackBox.classList.remove('hidden');
+      const explanationBox = document.getElementById('explanation-box');
+      const explanationText = document.getElementById('explanation-text');
+      
+      if (isCorrect) {
+        feedbackBox.className = 'mt-4 p-4 rounded-lg bg-green-50 border border-green-200';
+        feedbackText.className = 'font-medium text-green-700';
+        feedbackText.textContent = '正解です！';
+        
+        // Show explanation if available
+        if (q.explanation && q.explanation.trim()) {
+          explanationText.innerHTML = formatMathNotation(q.explanation);
+          explanationText.className = 'text-sm leading-relaxed text-green-800';
+          explanationBox.classList.remove('hidden');
+        } else {
+          explanationBox.classList.add('hidden');
+        }
+      } else {
+        feedbackBox.className = 'mt-4 p-4 rounded-lg bg-red-50 border border-red-200';
+        feedbackText.className = 'font-medium text-red-700';
+        feedbackText.innerHTML = `不正解です。正解は「${formatMathNotation(q.answer)}」です。`;
+        
+        // Show explanation if available
+        if (q.explanation && q.explanation.trim()) {
+          explanationText.innerHTML = formatMathNotation(q.explanation);
+          explanationText.className = 'text-sm leading-relaxed text-red-800';
+          explanationBox.classList.remove('hidden');
+        } else {
+          explanationBox.classList.add('hidden');
+        }
+      }
+      
+      // Show next/finish button
+      if (currentIndex < currentQuestions.length - 1) {
+        nextButton.classList.remove('hidden');
+      } else {
+        finishButton.classList.remove('hidden');
+      }
+    }
+
+    // Next question
+    function nextQuestion() {
+      currentIndex++;
+      showQuestion();
+    }
+
+    // Show results
+    function showResults() {
+      questionScreen.classList.add('hidden');
+      completeScreen.classList.remove('hidden');
+      const percentage = Math.round((correctCount / currentQuestions.length) * 100);
+      completeMessage.textContent = `${currentQuestions.length}問中${correctCount}問正解しました。`;
+      scoreDisplay.textContent = `${percentage}%`;
+    }
+
+    // Reset to selection
+    function resetToSelection() {
+      questionScreen.classList.add('hidden');
+      completeScreen.classList.add('hidden');
+      selectionScreen.classList.remove('hidden');
+    }
+
+    // Event Listeners
+    csvInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          try {
+            const rawData = parseCSV(event.target.result);
+            if (rawData.length === 0) {
+              showStatus('有効な問題データが見つかりませんでした', 'error');
+              return;
+            }
+            questionData = processQuestionData(rawData);
+            showStatus(`${rawData.length}問の問題を読み込みました`, 'success');
+            initSelectionScreen();
+          } catch (error) {
+            showStatus('CSVファイルの解析に失敗しました', 'error');
+          }
+        };
+        reader.readAsText(file);
+      }
+    });
+
+    useDefaultBtn.addEventListener('click', loadDefaultCSV);
+    startButton.addEventListener('click', startQuiz);
+    backButton.addEventListener('click', resetToSelection);
+    nextButton.addEventListener('click', nextQuestion);
+    finishButton.addEventListener('click', showResults);
+    completeRestartButton.addEventListener('click', resetToSelection);
+  </script>
+</body>
+</html>
