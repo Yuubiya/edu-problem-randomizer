@@ -73,37 +73,6 @@
         <h1 class="text-2xl md:text-3xl font-bold text-foreground mb-2">中学生学習サイト</h1>
         <p class="text-muted-foreground">学年・教科・単元を選んで問題を解こう</p>
       </header>
-
-      <!-- CSV Load Section -->
-      <div id="csv-load-section" class="card p-6 mb-6">
-        <div class="flex items-center gap-2 mb-4">
-          <svg class="icon text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-          </svg>
-          <h2 class="text-lg font-semibold">問題データの読み込み</h2>
-        </div>
-        <p class="text-sm text-muted-foreground mb-4">CSVファイルを選択するか、デフォルトの問題を使用してください。</p>
-        <p class="text-xs text-muted-foreground mb-4 bg-gray-50 p-3 rounded-lg">
-          CSVフォーマット: <code class="bg-gray-200 px-1 rounded">grade,subject,unit,question,answer,choice2,choice3,choice4,explanation,difficulty,tags</code><br>
-          ※ answerに正解を記載。選択肢はランダムに並び替えられます。<br>
-          ※ explanation（解説）、difficulty（easy/normal/hard）、tags（カンマ区切り）は省略可能です。
-        </p>
-        <div class="flex flex-col sm:flex-row gap-3">
-          <label class="btn btn-outline flex-1 cursor-pointer">
-            <svg class="icon mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
-            </svg>
-            CSVファイルを選択
-            <input type="file" id="csv-input" accept=".csv" class="hidden">
-          </label>
-          <button id="use-default-btn" class="btn btn-primary flex-1">
-            デフォルトの問題を使用
-          </button>
-        </div>
-        <p id="csv-status" class="text-sm text-muted-foreground mt-3 hidden"></p>
-      </div>
-
-      <!-- Selection Screen -->
       <div id="selection-screen" class="card p-6 hidden">
         <div class="flex items-center gap-2 mb-6">
           <svg class="icon text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -137,6 +106,24 @@
           </svg>
           問題を出す
         </button>
+
+        <!-- CSV Selection Section (shown below problems after loading) -->
+        <div id="csv-selection-section" class="mt-8 pt-6 border-t border-border">
+          <h3 class="text-sm font-medium text-muted-foreground mb-3">別の問題ファイルを使用</h3>
+          <p class="text-xs text-muted-foreground mb-4 bg-gray-50 p-3 rounded-lg">
+            CSVフォーマット: <code class="bg-gray-200 px-1 rounded">grade,subject,unit,question,answer,choice2,choice3,choice4,explanation,difficulty,tags</code><br>
+            ※ このファイルは【タブ区切り】です（カンマ区切りではありません）。<br>
+            ※ answer には正解を記載してください。選択肢（choice2〜choice4）は読み込み時にランダムに並び替えられます。<br>
+            ※ explanation（解説）、difficulty（easy / normal / hard）、tags は省略可能です。</p>
+          <label class="btn btn-outline w-full cursor-pointer">
+            <svg class="icon mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+            </svg>
+            別のCSVファイルを選択
+            <input type="file" id="csv-input" accept=".csv" class="hidden">
+          </label>
+          <p id="csv-status" class="text-sm text-muted-foreground mt-3 hidden"></p>
+        </div>
       </div>
 
       <!-- Question Screen -->
@@ -217,11 +204,10 @@
     let answered = false;
 
     // DOM Elements
-    const csvLoadSection = document.getElementById('csv-load-section');
     const csvInput = document.getElementById('csv-input');
-    const useDefaultBtn = document.getElementById('use-default-btn');
     const csvStatus = document.getElementById('csv-status');
     const selectionScreen = document.getElementById('selection-screen');
+    const csvSelectionSection = document.getElementById('csv-selection-section');
     const questionScreen = document.getElementById('question-screen');
     const completeScreen = document.getElementById('complete-screen');
     const gradeButtons = document.getElementById('grade-buttons');
@@ -327,8 +313,10 @@
 
     // Initialize selection screen
     function initSelectionScreen() {
-      csvLoadSection.classList.add('hidden');
+      csvSelectionSection.classList.remove('hidden');
       selectionScreen.classList.remove('hidden');
+      questionScreen.classList.add('hidden');
+      completeScreen.classList.add('hidden');
       renderGrades();
     }
 
@@ -452,6 +440,7 @@
       currentIndex = 0;
       correctCount = 0;
       selectionScreen.classList.add('hidden');
+      csvSelectionSection.classList.add('hidden');
       questionScreen.classList.remove('hidden');
       breadcrumb.textContent = `${selectedGrade.name} > ${selectedSubject.name} > ${selectedUnit.name}`;
       showQuestion();
@@ -587,6 +576,7 @@
     function resetToSelection() {
       questionScreen.classList.add('hidden');
       completeScreen.classList.add('hidden');
+      csvSelectionSection.classList.remove('hidden');
       selectionScreen.classList.remove('hidden');
     }
 
@@ -613,12 +603,14 @@
       }
     });
 
-    useDefaultBtn.addEventListener('click', loadDefaultCSV);
     startButton.addEventListener('click', startQuiz);
     backButton.addEventListener('click', resetToSelection);
     nextButton.addEventListener('click', nextQuestion);
     finishButton.addEventListener('click', showResults);
     completeRestartButton.addEventListener('click', resetToSelection);
+
+    // Auto-load default CSV on page load
+    window.addEventListener('DOMContentLoaded', loadDefaultCSV);
   </script>
 </body>
 </html>
